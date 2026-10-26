@@ -1,0 +1,822 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>반달곰 아바타</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* 레이아웃: 화면 전체가 무대, 아래에 접히는 조작판 하나 */
+:root {
+  --stage: #F6F3EC;
+  --ink: #1B1512;
+  --panel: #FFFFFF;
+  --panel-line: #E6DFD3;
+  --muted: #7B7066;
+  --accent: #A8834F;      /* 주둥이 베이지에서 뽑은 색 */
+  --accent-ink: #FFFFFF;
+  --live: #2F8F5B;
+  --warn: #B5562F;
+  --f-ui: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --stage: #1C1917; --ink: #F3EEE6; --panel: #26221F; --panel-line: #3A342F;
+  --muted: #A89C90; --accent: #C9A46E; --accent-ink: #1B1512; --live: #5FC08A; --warn: #E08A62; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --stage: #1C1917; --ink: #F3EEE6; --panel: #26221F; --panel-line: #3A342F;
+  --muted: #A89C90; --accent: #C9A46E; --accent-ink: #1B1512; --live: #5FC08A; --warn: #E08A62; color-scheme: dark }
+
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: var(--stage); color: var(--ink); font-family: var(--f-ui);
+  display: flex; flex-direction: column; overflow: hidden; margin: 0;
+}
+body.bg-green { --stage: #00B140; }
+body.bg-cream { --stage: #F6F3EC; }
+body.bg-night { --stage: #2B3A4A; }
+
+#stage {
+  flex: 1 1 auto; min-height: 0; position: relative;
+  display: grid; place-items: center; background: var(--stage);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px;
+}
+#bear { width: 100%; height: 100%; max-width: 100%; max-height: 100%; touch-action: manipulation; cursor: pointer; }
+
+#status {
+  position: absolute; top: 12px; left: max(16px, env(safe-area-inset-left, 0px));
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--panel); border: 1px solid var(--panel-line); border-radius: 999px;
+  padding: 6px 12px; font-size: 13px;
+}
+#status i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: block; }
+#status.live i { background: var(--live); }
+#status.warn i { background: var(--warn); }
+
+#cam {
+  position: absolute; top: 12px; right: max(16px, env(safe-area-inset-right, 0px));
+  width: 112px; aspect-ratio: 3 / 4; max-width: 30%; object-fit: cover; border-radius: 10px;
+  border: 1px solid var(--panel-line); background: #000; transform: scaleX(-1);
+}
+#cam.nomirror { transform: none; }
+
+#showui {
+  position: absolute; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+  opacity: .35;
+}
+#showui:hover, #showui:focus-visible { opacity: 1; }
+body.clean #cam { display: none; }
+body.clean #showui { opacity: 0; transition: opacity .3s; }
+body.clean.peek #showui { opacity: .6; }
+body.clean #bear { cursor: none; }
+
+#panel {
+  flex: 0 0 auto; background: var(--panel); border-top: 1px solid var(--panel-line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  display: grid; gap: 10px; max-height: 45vh; overflow-y: auto;
+}
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--panel-line); border-radius: 10px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; border-right: 1px solid var(--panel-line); }
+.seg button:last-child { border-right: 0; }
+button {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--panel-line); border-radius: 10px; padding: 7px 11px; cursor: pointer;
+}
+button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.spacer { flex: 1 1 auto; }
+#camSel { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 7px 8px; max-width: 220px; }
+.micsens { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.micsens input { width: 110px; accent-color: var(--accent); }
+
+.sliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 16px; }
+.sliders label { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; color: var(--muted); }
+.sliders output { font-family: var(--f-num); font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.sliders input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.hint kbd { font-family: var(--f-num); font-size: 11px; border: 1px solid var(--panel-line); border-radius: 4px; padding: 0 4px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div id="stage">
+  <div id="status" role="status"><i></i><span id="statusText">데모 모드</span></div>
+  <video id="cam" playsinline muted hidden></video>
+  <svg id="bear" viewBox="250 170 1564 1680" aria-label="반달가슴곰 아바타">
+    <defs>
+      <filter id="outline" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+        <feMorphology in="SourceAlpha" operator="dilate" radius="11" result="grow"/>
+        <feFlood flood-color="#F3E9D6"/>
+        <feComposite in2="grow" operator="in" result="ring"/>
+        <feMerge><feMergeNode in="ring"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <g id="bearAll" filter="url(#outline)">
+    <g id="legs">
+      <path fill="#15100E" d="M 752 1620 L 766 1730 C 744 1760 752 1784 800 1796 C 856 1792 870 1778 884 1730 L 900 1620 Z"/>
+      <path fill="#15100E" d="M 1312 1620 L 1298 1730 C 1320 1760 1312 1784 1264 1796 C 1208 1792 1194 1778 1180 1730 L 1164 1620 Z"/>
+    </g>
+    <g id="rig">
+      <g id="armL"><path fill="#15100E" d="M 600 880 C 520 950 450 1040 412 1100 C 398 1128 420 1152 442 1134 C 476 1094 520 1040 590 990 Z"/></g>
+      <g id="armR"><path fill="#15100E" d="M 1464 880 C 1544 950 1614 1040 1652 1100 C 1666 1128 1644 1152 1622 1134 C 1588 1094 1544 1040 1474 990 Z"/></g>
+      <g id="earL"><path fill="#15100E" d="M 668 430 C 668 380 704 350 742 350 C 780 350 816 380 816 430 C 816 470 792 500 782 560 L 702 560 C 692 500 668 470 668 430 Z"/></g>
+      <g id="earR"><path fill="#15100E" d="M 1248 430 C 1248 380 1284 350 1322 350 C 1360 350 1396 380 1396 430 C 1396 470 1372 500 1362 560 L 1282 560 C 1272 500 1248 470 1248 430 Z"/></g>
+      <path id="body" fill="#15100E" d="M 1032 368 C 1240 366 1382 410 1442 520 C 1502 640 1552 800 1577 960 C 1602 1120 1610 1250 1610 1340 C 1610 1560 1450 1708 1032 1714 C 614 1708 454 1560 454 1340 C 454 1250 462 1120 487 960 C 512 800 562 640 622 520 C 682 410 824 366 1032 368 Z"/>
+      <g id="chest"><path fill="#FFFFFF" d="M 957 822 C 1005 836 1085 836 1135 818 C 1115 852 1075 876 1045 876 C 1005 876 970 850 957 822 Z"/></g>
+      <g id="anger" opacity="0">
+        <g id="angerPulse" fill="none" stroke="#E5392F" stroke-width="15" stroke-linecap="round">
+          <path d="M -14 -50 Q -14 -14 -50 -14"/>
+          <path d="M 14 -50 Q 14 -14 50 -14"/>
+          <path d="M 14 50 Q 14 14 50 14"/>
+          <path d="M -14 50 Q -14 14 -50 14"/>
+        </g>
+      </g>
+      <g id="face">
+        <g id="eyeL">
+          <circle id="eyeLopen" cx="919" cy="555" r="15" fill="#FFFFFF"/>
+          <line id="eyeLclosed" x1="897" y1="559" x2="941" y2="559" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" opacity="0"/>
+        </g>
+        <g id="eyeR">
+          <circle id="eyeRopen" cx="1171" cy="555" r="15" fill="#FFFFFF"/>
+          <line id="eyeRclosed" x1="1149" y1="559" x2="1193" y2="559" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" opacity="0"/>
+        </g>
+        <g id="snout">
+          <path fill="#B89A6E" d="M 985 528 C 1015 515 1085 514 1115 528 C 1137 540 1137 595 1105 610 C 1065 625 995 622 970 608 C 950 595 957 545 985 528 Z"/>
+          <g id="nostril"><ellipse cx="1045" cy="550" rx="38" ry="14" fill="#15100E"/></g>
+        </g>
+      </g>
+    </g>
+    </g>
+    <g id="zzz"></g>
+    <g id="notes"></g>
+    <g id="flowers"></g>
+  </svg>
+  <button id="showui" type="button" hidden>조작판</button>
+</div>
+
+<div id="panel">
+  <div class="row">
+    <div class="seg" role="group" aria-label="움직임 방식">
+      <button type="button" id="modeDemo" aria-pressed="true">데모</button>
+      <button type="button" id="modeManual" aria-pressed="false">수동</button>
+      <button type="button" id="modeCam" aria-pressed="false">카메라</button>
+    </div>
+    <select id="camSel" aria-label="카메라 선택" hidden></select>
+    <button type="button" id="micBtn" aria-pressed="false">마이크로 코 움직이기</button>
+    <label id="micSens" class="micsens" for="sMic" hidden>마이크 감도 <input id="sMic" type="range" min="0" max="1" step="0.01" value="0.5"></label>
+    <button type="button" id="smileBtn" aria-pressed="false">꽃</button>
+    <button type="button" id="angryBtn" aria-pressed="false">열받음</button>
+    <button type="button" id="noteBtn" aria-pressed="false">음표</button>
+    <button type="button" id="idleBtn" aria-pressed="true">딴짓</button>
+    <button type="button" id="outlineBtn" aria-pressed="true">외곽선</button>
+    <span class="spacer"></span>
+    <div class="seg" role="group" aria-label="배경">
+      <button type="button" data-bg="cream" aria-pressed="true">크림</button>
+      <button type="button" data-bg="green" aria-pressed="false">그린스크린</button>
+      <button type="button" data-bg="night" aria-pressed="false">밤</button>
+    </div>
+    <button type="button" id="mirrorBtn" aria-pressed="true">거울 모드</button>
+    <button type="button" id="hideBtn">방송 화면</button>
+    <button type="button" id="fsBtn">전체화면</button>
+  </div>
+  <div class="sliders" id="sliders" hidden>
+    <label for="sYaw">고개 좌우 <output id="oYaw">0.00</output><input id="sYaw" type="range" min="-1" max="1" step="0.01" value="0"></label>
+    <label for="sPitch">고개 위아래 <output id="oPitch">0.00</output><input id="sPitch" type="range" min="-1" max="1" step="0.01" value="0"></label>
+    <label for="sRoll">갸웃 <output id="oRoll">0.00</output><input id="sRoll" type="range" min="-1" max="1" step="0.01" value="0"></label>
+    <label for="sTalk">코 들썩 (말하기) <output id="oTalk">0.00</output><input id="sTalk" type="range" min="0" max="1" step="0.01" value="0"></label>
+    <label for="sBlink">눈 감기 <output id="oBlink">0.00</output><input id="sBlink" type="range" min="0" max="1" step="0.01" value="0"></label>
+    <label for="sSmile">웃음 (꽃) <output id="oSmile">0.00</output><input id="sSmile" type="range" min="0" max="1" step="0.01" value="0"></label>
+    <label for="sFrown">찡그림 (열받음) <output id="oFrown">0.00</output><input id="sFrown" type="range" min="0" max="1" step="0.01" value="0"></label>
+    <label for="sBrow">귀 쫑긋 (눈썹) <output id="oBrow">0.00</output><input id="sBrow" type="range" min="0" max="1" step="0.01" value="0"></label>
+  </div>
+  <p class="hint">곰을 누르면 꽃이 날리며 통통 튑니다. 한동안 조용하면 곰이 두리번거리다 하품하고 졸기 시작하고, 말을 걸면 화들짝 깹니다. 마이크를 켜고 흥얼거리면 음표가 나옵니다. 카메라 모드에서는 내가 웃으면 머리 주변에 꽃이, 찡그리면 이마에 열받음 표시가 뜨고, 입을 벌리면 코가 들썩, 눈썹을 올리면 귀가 쫑긋합니다. 단축키 <kbd>H</kbd> 방송 화면(조작판·카메라 미리보기 숨김) · <kbd>F</kbd> 전체화면 · <kbd>S</kbd> 꽃 · <kbd>A</kbd> 열받음 · <kbd>D</kbd> 음표 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 모드 전환.</p>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  // ---- 상태 ----
+  const target = { yaw: 0, pitch: 0, roll: 0, blinkL: 0, blinkR: 0, talk: 0, smile: 0, brow: 0, frown: 0 };
+  const cur = { ...target };
+  let mode = "demo";
+  let mirror = true;
+  let smileLock = false, angryLock = false;
+  let burst = 0;
+  let micLevel = 0, micOn = false;
+  let noteLock = false, idleOn = true, humming = 0, humPitch = 0;
+  const idle = { quiet: 0, yaw: 0, pitch: 0, gT: 0, gYaw: 0, gPitch: 0, nextGlance: 2, yawn: 0, yawnT: -1, nextYawn: 0, doze: 0, wasDozing: false, zAcc: 0 };
+
+  // 물리(귀·팔·콧구멍): 각도/위치와 속도
+  const spring = (k, c) => ({ x: 0, v: 0, k, c });
+  // 귀: 좌우 박자를 일부러 어긋나게(강성·감쇠 다르게), 한두 번 출렁이고 멈추게
+  const earL = spring(150, 10), earR = spring(118, 8);
+  const armL = spring(80, 7), armR = spring(70, 6);
+  // 불규칙한 미세 떨림(사인 여러 개를 섞은 잡음)
+  const wiggle = (t, seed) => Math.sin(t * 1.7 + seed) * 0.6 + Math.sin(t * 2.9 + seed * 2.3) * 0.3 + Math.sin(t * 5.3 + seed * 0.7) * 0.15;
+  const nose = spring(260, 10);
+  // 젤리: 머리 쪽만 눌렸다 늘어나고(squash) 좌우로 출렁(skew). 배 아래는 고정.
+  const squash = spring(150, 10), skew = spring(90, 8), faceLag = spring(140, 10);
+  // 몸 윤곽 제어점 (머리 쪽 점만 움직임)
+  const BODY = [[1032,368],[1240,366],[1382,410],[1442,520],[1502,640],[1552,800],[1577,960],[1602,1120],[1610,1250],[1610,1340],
+    [1610,1560],[1450,1708],[1032,1714],[614,1708],[454,1560],[454,1340],[454,1250],[462,1120],[487,960],[512,800],[562,640],[622,520],[682,410],[824,366],[1032,368]];
+  const headW = (y) => { const u = clamp((1150 - y) / 750, 0, 1); return u * u * (3 - 2 * u); };
+  let wob = { sk: 0, sq: 0 };
+  function deform(x, y) {
+    const w = headW(y);
+    return [x + w * (wob.sk + (x - 1032) * -0.7 * wob.sq), y + w * (y - 1150) * wob.sq];
+  }
+  let nextTwitch = 3, nextHop = 2.5;
+  function boing(power = 1) {
+    squash.v -= 0.5 * power; skew.v += (Math.random() < 0.5 ? -1 : 1) * 30 * power;
+    earL.v -= 150 * power; earR.v += 150 * power; armL.v -= 90 * power; armR.v += 90 * power;
+  }
+  let prev = { yaw: 0, roll: 0, bob: 0 };
+
+  // ---- 데모 움직임 ----
+  let nextBlink = 1.2, blinkT = -1, talkPhase = 0, nextTalkSwitch = 2;
+  function demo(t, dt) {
+    target.yaw = Math.sin(t * 0.45) * 0.4 + Math.sin(t * 1.27) * 0.1;
+    target.pitch = Math.sin(t * 0.33 + 1) * 0.25;
+    target.roll = Math.sin(t * 0.38 + 2) * 0.25;
+    nextBlink -= dt;
+    if (nextBlink <= 0) { blinkT = 0; nextBlink = 2 + Math.random() * 3; }
+    if (blinkT >= 0) {
+      blinkT += dt;
+      const b = blinkT < 0.08 ? blinkT / 0.08 : blinkT < 0.16 ? 1 - (blinkT - 0.08) / 0.08 : 0;
+      target.blinkL = target.blinkR = clamp(b, 0, 1);
+      if (blinkT > 0.16) blinkT = -1;
+    }
+    nextTalkSwitch -= dt;
+    if (nextTalkSwitch <= 0) { talkPhase = talkPhase ? 0 : 1; nextTalkSwitch = talkPhase ? 1.5 + Math.random() * 2 : 1 + Math.random() * 2; }
+    target.talk = talkPhase ? Math.max(0, Math.sin(t * 15) * (0.6 + 0.4 * Math.sin(t * 3.1))) : 0;
+    target.smile = Math.sin(t * 0.21) > 0.85 ? 1 : 0;
+    target.frown = Math.sin(t * 0.17 + 2.5) > 0.9 ? 1 : 0;
+    target.brow = Math.sin(t * 0.29 + 4) > 0.8 ? 1 : 0;
+    nextHop -= dt;
+    if (nextHop <= 0) { boing(0.7 + Math.random() * 0.5); nextHop = 3 + Math.random() * 4; }
+  }
+
+  // ---- 수동(슬라이더) ----
+  const sliders = { yaw: $("sYaw"), pitch: $("sPitch"), roll: $("sRoll"), talk: $("sTalk"), blink: $("sBlink"), brow: $("sBrow"), smile: $("sSmile"), frown: $("sFrown") };
+  const outs = { yaw: $("oYaw"), pitch: $("oPitch"), roll: $("oRoll"), talk: $("oTalk"), blink: $("oBlink"), brow: $("oBrow"), smile: $("oSmile"), frown: $("oFrown") };
+  function manual() {
+    target.yaw = +sliders.yaw.value; target.pitch = +sliders.pitch.value; target.roll = +sliders.roll.value;
+    target.talk = +sliders.talk.value; target.blinkL = target.blinkR = +sliders.blink.value; target.smile = +sliders.smile.value; target.frown = +sliders.frown.value; target.brow = +sliders.brow.value;
+  }
+  Object.values(sliders).forEach((s) => s.addEventListener("input", () => setMode("manual")));
+  function showValues() {
+    if (mode === "manual") return;
+    sliders.yaw.value = cur.yaw; sliders.pitch.value = cur.pitch; sliders.roll.value = cur.roll;
+    sliders.talk.value = cur.talk; sliders.blink.value = (cur.blinkL + cur.blinkR) / 2; sliders.brow.value = cur.brow; sliders.smile.value = cur.smile; sliders.frown.value = cur.frown;
+  }
+
+  // ---- 카메라 얼굴 인식 (MediaPipe) ----
+  let landmarker = null, video = $("cam"), stream = null, lastVideoTime = -1, faceSeen = 0;
+  async function startCamera() {
+    setStatus("카메라를 켜는 중", "");
+    try {
+      const camId = $("camSel").value || savedCam();
+      const vc = camId ? { deviceId: { exact: camId }, width: 640, height: 480 } : { facingMode: "user", width: 640, height: 480 };
+      try { stream = await navigator.mediaDevices.getUserMedia({ video: vc, audio: false }); }
+      catch (e1) { stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false }); }
+    } catch (e) {
+      setStatus("여기서는 카메라를 쓸 수 없어요. 데모·수동 모드로 보세요.", "warn");
+      setMode("demo", true);
+      return;
+    }
+    video.srcObject = stream; video.hidden = false; await video.play();
+    lastAdvance = performance.now();
+    // 다른 프로그램이 카메라를 가져가거나 연결이 끊기면 자동으로 다시 연결
+    stream.getVideoTracks().forEach((t) => (t.onended = () => { if (mode === "cam") restartCamera("카메라 연결이 끊겨서 다시 연결하는 중"); }));
+    fillCams();
+    if (!landmarker) {
+      setStatus("얼굴 인식 모델 불러오는 중", "");
+      try {
+        const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs");
+        const files = await vision.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+        const opts = (delegate) => ({
+          baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task", delegate },
+          outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true, runningMode: "VIDEO", numFaces: 1,
+        });
+        try { landmarker = await vision.FaceLandmarker.createFromOptions(files, opts("GPU")); }
+        catch { landmarker = await vision.FaceLandmarker.createFromOptions(files, opts("CPU")); }
+      } catch (e) {
+        setStatus("얼굴 인식 모델을 못 불러왔어요. 인터넷 연결을 확인해 주세요.", "warn");
+        stopCamera(); setMode("demo", true);
+        return;
+      }
+    }
+    setStatus("얼굴을 찾는 중", "");
+  }
+  let lastAdvance = 0, restarting = false;
+  function savedCam() { try { return localStorage.getItem("bearCam") || ""; } catch { return ""; } }
+  async function fillCams() {
+    try {
+      const sel = $("camSel"), cur = (stream && stream.getVideoTracks()[0]?.getSettings().deviceId) || sel.value;
+      const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+      sel.innerHTML = "";
+      devs.forEach((d, i) => { const o = document.createElement("option"); o.value = d.deviceId; o.textContent = d.label || "카메라 " + (i + 1); sel.appendChild(o); });
+      if (cur) sel.value = cur;
+      sel.hidden = devs.length < 2;
+    } catch {}
+  }
+  async function restartCamera(msg) {
+    if (restarting) return; restarting = true;
+    setStatus(msg || "카메라 다시 연결하는 중", "warn");
+    stopCamera();
+    await new Promise((r) => setTimeout(r, 600));
+    if (mode === "cam") await startCamera();
+    restarting = false;
+  }
+  function stopCamera() {
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = null; video.hidden = true;
+  }
+  const remap = (v, a, b) => clamp((v - a) / (b - a), 0, 1);
+  function track() {
+    if (!landmarker || !stream || video.readyState < 2) return;
+    if (video.currentTime === lastVideoTime) {
+      // 화면이 2.5초 넘게 멈춰 있으면 카메라를 다시 연결
+      if (performance.now() - lastAdvance > 2500) restartCamera("카메라 화면이 멈춰서 다시 연결하는 중");
+      return;
+    }
+    lastVideoTime = video.currentTime; lastAdvance = performance.now();
+    let r;
+    try { r = landmarker.detectForVideo(video, performance.now()); } catch { return; }
+    if (!r.faceBlendshapes || !r.faceBlendshapes.length) {
+      if (performance.now() - faceSeen > 800) setStatus("얼굴을 찾는 중", "");
+      return;
+    }
+    faceSeen = performance.now();
+    setStatus("얼굴 인식 중", "live");
+    const bs = {};
+    r.faceBlendshapes[0].categories.forEach((c) => (bs[c.categoryName] = c.score));
+    const m = r.facialTransformationMatrixes[0].data;
+    const yaw = Math.atan2(m[8], m[10]);
+    const pitch = Math.asin(clamp(-m[9], -1, 1));
+    const roll = Math.atan2(m[1], m[0]);
+    const s = mirror ? 1 : -1;
+    target.yaw = clamp((-yaw / 0.5) * s, -1, 1);
+    target.pitch = clamp(-pitch / 0.35, -1, 1);
+    target.roll = clamp((roll / 0.35) * s, -1, 1);
+    const bl = remap(bs.eyeBlinkLeft || 0, 0.25, 0.6), br = remap(bs.eyeBlinkRight || 0, 0.25, 0.6);
+    target.blinkL = mirror ? bl : br; target.blinkR = mirror ? br : bl;
+    target.talk = remap(bs.jawOpen || 0, 0.06, 0.45);
+    target.smile = remap(((bs.mouthSmileLeft || 0) + (bs.mouthSmileRight || 0)) / 2, 0.3, 0.6);
+    target.frown = remap(((bs.browDownLeft || 0) + (bs.browDownRight || 0)) / 2, 0.2, 0.5);
+    // 눈썹을 올리면 귀가 쫑긋
+    const brow = Math.max(bs.browInnerUp || 0, ((bs.browOuterUpLeft || 0) + (bs.browOuterUpRight || 0)) / 2);
+    target.brow = remap(brow, 0.2, 0.6);
+  }
+
+  // ---- 마이크 ----
+  let analyser = null, micStream = null, buf = null, pitchAn = null, pbuf = null, psr = 48000;
+  // ---- 흥얼거림 감지 ----
+  // 말은 음높이가 계속 미끄러지고 음절이 짧게 끊김. 흥얼거림·노래는 한 음을 0.3초 넘게 비슷한 높이로 끄는 게 특징.
+  let voicedRun = 0, pitchHist = [], humHold = 0;
+  function readPitch(dt) {
+    if (!micOn || !pitchAn) { humming = 0; return; }
+    pitchAn.getFloatTimeDomainData(pbuf);
+    const N = pbuf.length >> 1, x = new Float32Array(N);
+    let e = 0; for (let i = 0; i < N; i++) { x[i] = pbuf[i * 2]; e += x[i] * x[i]; }
+    const rms = Math.sqrt(e / N), sr = psr / 2;
+    const gate = 0.02 - (+$("sMic").value) * 0.016;
+    let freq = 0, clarity = 0;
+    if (rms > gate) {
+      const minL = Math.floor(sr / 900), maxL = Math.min(Math.floor(sr / 75), N - 1);
+      let best = 0, bestL = 0;
+      for (let L = minL; L <= maxL; L++) {
+        let c = 0, a = 0, b = 0;
+        for (let i = 0; i < N - L; i += 2) { c += x[i] * x[i + L]; a += x[i] * x[i]; b += x[i + L] * x[i + L]; }
+        const r = c / (Math.sqrt(a * b) + 1e-9);
+        if (r > best) { best = r; bestL = L; }
+      }
+      clarity = best; if (bestL) freq = sr / bestL;
+    }
+    if (clarity > 0.86 && freq > 75 && freq < 900) {
+      voicedRun += dt;
+      const semi = 12 * Math.log2(freq / 220);
+      pitchHist.push([performance.now(), semi]);
+    } else { voicedRun = 0; pitchHist = []; }
+    const now = performance.now();
+    pitchHist = pitchHist.filter((p) => now - p[0] < 300);
+    let stable = false;
+    if (pitchHist.length > 6) {
+      const m = pitchHist.reduce((s, p) => s + p[1], 0) / pitchHist.length;
+      const sd = Math.sqrt(pitchHist.reduce((s, p) => s + (p[1] - m) ** 2, 0) / pitchHist.length);
+      stable = sd < 1.1; humPitch = m;
+    }
+    if (voicedRun > 0.32 && stable) humHold = 0.5; else humHold -= dt;
+    humming = humHold > 0 ? 1 : 0;
+  }
+  async function toggleMic() {
+    if (micOn) {
+      micOn = false; micStream && micStream.getTracks().forEach((t) => t.stop()); micStream = null;
+      $("micBtn").setAttribute("aria-pressed", "false"); $("micSens").hidden = true; return;
+    }
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { noiseSuppression: true, echoCancellation: true, autoGainControl: false } });
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = ctx.createMediaStreamSource(micStream);
+      // 목소리 대역(약 200~3500Hz)만 남겨서 키보드 '딸깍' 고음을 줄임
+      const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 200;
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3500;
+      analyser = ctx.createAnalyser(); analyser.fftSize = 512;
+      src.connect(hp); hp.connect(lp); lp.connect(analyser);
+      buf = new Float32Array(analyser.fftSize);
+      // 흥얼거림 감지용: 필터 없이 원음에서 음높이를 잼 (낮은 남자 목소리까지)
+      pitchAn = ctx.createAnalyser(); pitchAn.fftSize = 2048; src.connect(pitchAn);
+      pbuf = new Float32Array(pitchAn.fftSize); psr = ctx.sampleRate;
+      micOn = true; $("micBtn").setAttribute("aria-pressed", "true"); $("micSens").hidden = false;
+    } catch {
+      setStatus("여기서는 마이크를 쓸 수 없어요.", "warn");
+    }
+  }
+  // 목소리는 '이어지는 소리', 타자는 '짧게 튀는 소리'로 구분
+  let loudFrames = 0, holdT = 0, spikeFrames = 0, flickCool = 0;
+  function readMic(dt) {
+    if (!micOn || !analyser) return 0;
+    analyser.getFloatTimeDomainData(buf);
+    let sum = 0; for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+    const rms = Math.sqrt(sum / buf.length);
+    const gate = 0.032 - (+$("sMic").value) * 0.026;        // 감도가 높을수록 작은 소리도 통과
+    const raw = remap(rms, gate, gate * 7);
+    flickCool -= dt;
+    if (raw > 0.12) { loudFrames++; spikeFrames++; }
+    else {
+      // 짧게 튀고 끝난 소리 = 타자·딸깍 → 코 대신 귀가 움찔
+      if (spikeFrames > 0 && spikeFrames <= 3 && flickCool <= 0) {
+        (Math.random() < 0.5 ? earL : earR).v += (Math.random() < 0.5 ? -1 : 1) * (90 + Math.random() * 70);
+        flickCool = 0.18;
+      }
+      loudFrames = 0; spikeFrames = 0;
+    }
+    const voice = loudFrames >= 5;                          // 약 0.08초 이상 이어져야 목소리로 인정
+    if (voice) holdT = 0.15; else holdT -= dt;
+    const target = voice || holdT > 0 ? raw : 0;
+    micLevel = lerp(micLevel, target, target > micLevel ? 0.5 : 0.25);
+    return micLevel;
+  }
+
+
+  // ---- 그리기 ----
+  const el = {
+    rig: $("rig"), body: $("body"), armL: $("armL"), armR: $("armR"), earL: $("earL"), earR: $("earR"),
+    chest: $("chest"), face: $("face"), eyeL: $("eyeL"), eyeR: $("eyeR"), snout: $("snout"), nostril: $("nostril"),
+    eLo: $("eyeLopen"), eLc: $("eyeLclosed"), eRo: $("eyeRopen"), eRc: $("eyeRclosed"), anger: $("anger"), angerPulse: $("angerPulse"), flowers: $("flowers"),
+  };
+  const T = (n, s) => n.setAttribute("transform", s);
+  const rot = (deg, x, y) => `rotate(${deg.toFixed(2)} ${x} ${y})`;
+
+  function step(sp, force, dt) {
+    const a = -sp.k * sp.x - sp.c * sp.v + force;
+    sp.v += a * dt; sp.x += sp.v * dt;
+  }
+
+  const angerPop = spring(260, 14);
+  // ---- 꽃 파티클 ----
+  const NS = "http://www.w3.org/2000/svg";
+  const PETALS = ["#F7B6C8", "#FFE07A", "#FFFFFF", "#F9C9A0", "#D9C2F0"];
+  const flowers = [];
+  let flowerAcc = 0;
+  function makeFlower(color) {
+    const g = document.createElementNS(NS, "g");
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const c = document.createElementNS(NS, "ellipse");
+      c.setAttribute("cx", (Math.cos(a) * 20).toFixed(1)); c.setAttribute("cy", (Math.sin(a) * 20).toFixed(1));
+      c.setAttribute("rx", 15); c.setAttribute("ry", 11);
+      c.setAttribute("transform", `rotate(${(a * 180 / Math.PI).toFixed(0)} ${(Math.cos(a) * 20).toFixed(1)} ${(Math.sin(a) * 20).toFixed(1)})`);
+      c.setAttribute("fill", color);
+      g.appendChild(c);
+    }
+    const mid = document.createElementNS(NS, "circle");
+    mid.setAttribute("r", 9); mid.setAttribute("fill", color === "#FFE07A" ? "#F29B38" : "#F6C343");
+    g.appendChild(mid);
+    return g;
+  }
+  function spawnFlower(lean, bob) {
+    const th = Math.PI * (0.9 + Math.random() * 1.2);           // 머리 위쪽 반원
+    const f = {
+      th, r: 1, w: (Math.random() < 0.5 ? -1 : 1) * (0.35 + Math.random() * 0.45),
+      cx: 1045 + lean, cy: 620 + bob, rx: 500 + Math.random() * 80, ry: 270 + Math.random() * 50,
+      lift: 0, rise: 25 + Math.random() * 35, spin: Math.random() * 360, spinV: (Math.random() - 0.5) * 220,
+      size: 1.0 + Math.random() * 0.7, age: 0, life: 2.2 + Math.random() * 1.2, seed: Math.random() * 10,
+      el: makeFlower(PETALS[Math.floor(Math.random() * PETALS.length)]),
+    };
+    el.flowers.appendChild(f.el); flowers.push(f);
+  }
+  function updateFlowers(dt) {
+    for (let i = flowers.length - 1; i >= 0; i--) {
+      const f = flowers[i];
+      f.age += dt; f.th += f.w * dt; f.r += dt * 0.04; f.lift += f.rise * dt; f.spin += f.spinV * dt;
+      const x = f.cx + Math.cos(f.th) * f.rx * f.r + Math.sin(f.age * 3 + f.seed) * 14;
+      const y = f.cy + Math.sin(f.th) * f.ry * f.r - f.lift;
+      const pop = Math.min(1, f.age / 0.25), fade = clamp((f.life - f.age) / 0.6, 0, 1);
+      const sc = f.size * (pop < 1 ? pop * (1.25 - 0.25 * pop) : 1);
+      f.el.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${f.spin.toFixed(0)}) scale(${sc.toFixed(3)})`);
+      f.el.setAttribute("opacity", fade.toFixed(2));
+      if (f.age >= f.life) { f.el.remove(); flowers.splice(i, 1); }
+    }
+  }
+
+  // ---- 음표 ----
+  const notes = []; let noteAcc = 0;
+  const NOTE_COLORS = ["#FFF4D6", "#FFE07A", "#F7B6C8", "#BFE3FF"];
+  function makeNote(color) {
+    const g = document.createElementNS(NS, "g");
+    const dbl = Math.random() < 0.45;
+    const parts = dbl
+      ? `<ellipse cx="0" cy="0" rx="22" ry="16" transform="rotate(-22)" fill="${color}"/><ellipse cx="62" cy="-14" rx="22" ry="16" transform="rotate(-22 62 -14)" fill="${color}"/>
+         <rect x="15" y="-92" width="8" height="92" fill="${color}"/><rect x="77" y="-106" width="8" height="92" fill="${color}"/>
+         <path d="M 15 -92 L 85 -106 L 85 -88 L 15 -74 Z" fill="${color}"/>`
+      : `<ellipse cx="0" cy="0" rx="22" ry="16" transform="rotate(-22)" fill="${color}"/><rect x="15" y="-96" width="8" height="96" fill="${color}"/>
+         <path d="M 23 -96 C 40 -84 58 -76 52 -46 C 50 -64 38 -70 23 -72 Z" fill="${color}"/>`;
+    g.innerHTML = parts;
+    return g;
+  }
+  function spawnNote(lean, bob) {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const hi = clamp((humPitch + 12) / 24, 0, 1);         // 높게 부르면 음표가 더 높은 곳에서 나옴
+    const n = { x: 1045 + lean + side * (300 + Math.random() * 120), y: 640 + bob - hi * 140, vx: side * (30 + Math.random() * 50),
+      vy: -(110 + Math.random() * 60), rot: (Math.random() - 0.5) * 30, age: 0, life: 2.4 + Math.random() * 0.8,
+      size: 1.0 + Math.random() * 0.55, seed: Math.random() * 6, el: makeNote(NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)]) };
+    $("notes").appendChild(n.el); notes.push(n);
+  }
+  function updateNotes(dt) {
+    for (let i = notes.length - 1; i >= 0; i--) {
+      const n = notes[i]; n.age += dt;
+      n.x += (n.vx + Math.sin(n.age * 4 + n.seed) * 60) * dt; n.y += n.vy * dt;
+      const pop = Math.min(1, n.age / 0.2), fade = clamp((n.life - n.age) / 0.7, 0, 1);
+      const sc = n.size * (pop < 1 ? pop * (1.3 - 0.3 * pop) : 1);
+      n.el.setAttribute("transform", `translate(${n.x.toFixed(1)} ${n.y.toFixed(1)}) rotate(${(n.rot + Math.sin(n.age * 5 + n.seed) * 12).toFixed(1)}) scale(${sc.toFixed(3)})`);
+      n.el.setAttribute("opacity", fade.toFixed(2));
+      if (n.age >= n.life) { n.el.remove(); notes.splice(i, 1); }
+    }
+  }
+  // ---- Zzz ----
+  const zs = [];
+  function spawnZ(lean, bob) {
+    const t = document.createElementNS(NS, "text");
+    t.textContent = "Z"; t.setAttribute("fill", "#F3E9D6"); t.setAttribute("font-weight", "800");
+    t.setAttribute("font-family", "Gowun Dodum, system-ui, sans-serif"); t.setAttribute("font-size", "120");
+    t.setAttribute("text-anchor", "middle");
+    $("zzz").appendChild(t);
+    zs.push({ el: t, x: 1300 + lean, y: 430 + bob, age: 0, life: 2.6, seed: Math.random() * 6 });
+  }
+  function updateZ(dt) {
+    for (let i = zs.length - 1; i >= 0; i--) {
+      const z = zs[i]; z.age += dt;
+      const x = z.x + z.age * 70 + Math.sin(z.age * 2.5 + z.seed) * 25, y = z.y - z.age * 90;
+      const sc = 0.45 + z.age * 0.35, fade = clamp(Math.min(z.age / 0.3, (z.life - z.age) / 0.8), 0, 1);
+      z.el.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(-12) scale(${sc.toFixed(3)})`);
+      z.el.setAttribute("opacity", fade.toFixed(2));
+      if (z.age >= z.life) { z.el.remove(); zs.splice(i, 1); }
+    }
+  }
+  // ---- 딴짓: 조용하면 두리번 → 하품 → 꾸벅꾸벅 ----
+  const GLANCE_AFTER = 6, YAWN_AFTER = 22, DOZE_AFTER = 45;
+  function updateIdle(t, dt, active, lean, bob) {
+    if (!idleOn) active = true;
+    if (active) {
+      if (idle.wasDozing) { boing(1.3); earL.v -= 260; earR.v += 260; idle.wasDozing = false; idle.doze = 0; idle.yawnT = -1; }   // 화들짝
+      idle.quiet = 0;
+    } else idle.quiet += dt;
+    const q = idle.quiet;
+    // 두리번
+    let gy = 0, gp = 0;
+    if (q > GLANCE_AFTER && idle.doze < 0.5) {
+      idle.nextGlance -= dt;
+      if (idle.nextGlance <= 0) { idle.gYaw = (Math.random() < 0.5 ? -1 : 1) * (0.35 + Math.random() * 0.35); idle.gPitch = (Math.random() - 0.4) * 0.35; idle.gT = 1.1 + Math.random() * 0.9; idle.nextGlance = 3 + Math.random() * 4; }
+    } else idle.nextGlance = 1.5;
+    if (idle.gT > 0) { idle.gT -= dt; gy = idle.gYaw; gp = idle.gPitch; }
+    // 하품
+    if (q > YAWN_AFTER && idle.doze < 0.5 && idle.yawnT < 0) {
+      idle.nextYawn -= dt;
+      if (idle.nextYawn <= 0) { idle.yawnT = 0; idle.nextYawn = 9 + Math.random() * 7; }
+    }
+    if (q <= YAWN_AFTER) idle.nextYawn = 1.5;
+    idle.yawn = 0;
+    if (idle.yawnT >= 0) {
+      idle.yawnT += dt; const u = idle.yawnT / 2.4;
+      idle.yawn = u < 1 ? Math.sin(Math.PI * Math.min(1, u * 1.15)) ** 1.5 : 0;
+      gp -= idle.yawn * 0.45;
+      if (u >= 1) idle.yawnT = -1;
+    }
+    // 졸기
+    const dozeTarget = q > DOZE_AFTER ? 1 : 0;
+    idle.doze = lerp(idle.doze, dozeTarget, 1 - Math.pow(0.25, dt));
+    if (idle.doze > 0.5) {
+      idle.wasDozing = true;
+      const nod = (Math.sin(t * 1.3) * 0.5 + 0.5) ** 3;            // 천천히 고개가 떨어졌다가
+      gp += idle.doze * (0.35 + nod * 0.35); gy += Math.sin(t * 0.4) * 0.08;
+      if (Math.sin(t * 1.3) > 0.995 && Math.random() < 0.02) squash.v -= 0.4;   // 가끔 움찔
+      idle.zAcc += dt; if (idle.zAcc > 0.9) { idle.zAcc = 0; spawnZ(lean, bob); }
+    }
+    const kk = 1 - Math.pow(0.02, dt);
+    idle.yaw = lerp(idle.yaw, gy, kk); idle.pitch = lerp(idle.pitch, gp, kk);
+    updateZ(dt);
+  }
+
+  function draw(t, dt) {
+    const k = 1 - Math.pow(0.0003, dt);           // 따라가기 (조금 더 기민하게)
+    const kb = 1 - Math.pow(0.000001, dt);        // 깜빡임·말하기는 빠르게
+    for (const key of ["yaw", "pitch", "roll", "talk", "smile", "brow", "frown"]) cur[key] = lerp(cur[key] || 0, target[key], key === "talk" ? kb : k);
+    cur.blinkL = lerp(cur.blinkL, target.blinkL, kb); cur.blinkR = lerp(cur.blinkR, target.blinkR, kb);
+
+    readPitch(dt);
+    const humOn = humming || noteLock;
+    const rawTalk = Math.max(cur.talk, readMic(dt));
+    const talkHum = humming ? rawTalk * 0.35 : rawTalk;             // 흥얼거릴 땐 코를 덜 움직임
+    const activeNow = rawTalk > 0.15 || humOn || cur.smile > 0.5 || cur.frown > 0.4 || smileLock || angryLock || performance.now() < pokeUntil;
+    updateIdle(t, dt, activeNow, cur.yaw * 10, Math.sin(t * 2.1) * 5);
+    const talk = Math.max(talkHum, idle.yawn * 1.25);              // 하품은 코가 크게 위로
+    const Y = cur.yaw + idle.yaw, Pt = cur.pitch + idle.pitch;
+    const breath = Math.sin(t * (2.1 - idle.doze * 0.9)) * (1 + idle.doze * 0.8);
+    const bob = breath * 5 - talk * 14;
+    const lean = Y * 10;
+    const rollDeg = cur.roll * 7;
+
+    // 속도 → 물리 입력
+    const dYaw = (Y - prev.yaw) / dt, dRoll = (cur.roll - prev.roll) / dt, dBob = (bob - prev.bob) / dt;
+    const dPitch = (Pt - (prev.pitch || 0)) / dt;
+    const dTalk = (talk - (prev.talk || 0)) / dt, dBrow = (cur.brow - (prev.brow || 0)) / dt;
+    prev = { yaw: Y, roll: cur.roll, bob, talk, pitch: Pt, brow: cur.brow };
+
+    // 귀: 고개 움직임 속도에 크게 반응 + 가끔 혼자 씰룩
+    nextTwitch -= dt;
+    if (nextTwitch <= 0) { (Math.random() < 0.5 ? earL : earR).v += (Math.random() < 0.5 ? -1 : 1) * (180 + Math.random() * 160); nextTwitch = 2.5 + Math.random() * 6; }
+    step(earL, -dYaw * 1700 - dRoll * 1700 + dBob * 6 - dBrow * 350, dt);
+    step(earR, -dYaw * 1300 - dRoll * 1900 - dBob * 7 + dBrow * 350, dt);
+    step(armL, -dRoll * 700 - dYaw * 300 + dBob * 5, dt);
+    step(armR, -dRoll * 700 - dYaw * 300 - dBob * 5, dt);
+    step(nose, dTalk * 160, dt);
+    step(squash, -dBob * 0.02 + dTalk * 0.22 + dPitch * 0.5, dt);
+    step(skew, -dYaw * 900 - dRoll * 400, dt);
+    step(faceLag, -dYaw * 900, dt);
+
+    wob.sq = clamp(squash.x, -0.06, 0.06);
+    wob.sk = clamp(skew.x, -22, 22);        // 머리 꼭대기 기준 좌우 출렁임(px)
+    T(el.rig, `translate(${lean.toFixed(2)} ${bob.toFixed(2)}) ${rot(rollDeg, 1032, 1660)}`);
+    const P = BODY.map(([x, y]) => deform(x, y).map((v) => v.toFixed(1)).join(" "));
+    let d = `M ${P[0]}`;
+    for (let i = 1; i < P.length; i += 3) d += ` C ${P[i]} ${P[i + 1]} ${P[i + 2]}`;
+    el.body.setAttribute("d", d + " Z");
+    const at = (x, y) => { const [nx, ny] = deform(x, y); return [nx - x, ny - y]; };
+    const [hfx, hfy] = at(1045, 570), [hcx, hcy] = at(1045, 850);
+    const [hlx, hly] = at(742, 520), [hrx, hry] = at(1322, 520);
+    const [alx, aly] = at(585, 935), [arx, ary] = at(1479, 935);
+    const fx = Y * 80 + clamp(faceLag.x, -15, 15) + hfx, fy = Pt * 30 + hfy;
+    T(el.face, `translate(${fx.toFixed(2)} ${fy.toFixed(2)})`);
+    T(el.chest, `translate(${(Y * 28 + hcx).toFixed(2)} ${(Pt * 8 + hcy).toFixed(2)})`);
+    // 고개 돌린 쪽 눈 간격이 좁아지게
+    T(el.eyeL, `translate(${(Y * 10).toFixed(2)} 0)`);
+    T(el.eyeR, `translate(${(Y * -2).toFixed(2)} 0)`);
+
+    // 코 들썩: 위로 올라가며 세로로 눌림
+    const sy = 1 - talk * 0.12, sx = 1 + talk * 0.06, up = -talk * 22;
+    T(el.snout, `translate(1045 ${(568 + up).toFixed(2)}) scale(${sx.toFixed(3)} ${sy.toFixed(3)}) translate(-1045 -568)`);
+    T(el.nostril, `translate(0 ${(nose.x * 0.6).toFixed(2)})`);
+
+    const angry = Math.max(cur.frown, angryLock ? 1 : 0);
+    const perk = cur.brow - angry * 0.9;      // 열받으면 귀가 바깥·아래로 젖혀짐
+    const earX = Y * 22, earY = -Pt * 10 - perk * 18;
+    T(el.earL, `translate(${(earX + hlx).toFixed(2)} ${(earY + hly).toFixed(2)}) ${rot(clamp(earL.x, -28, 28) + wiggle(t, 1) * 1.6 - 4 - perk * 12, 742, 540)}`);
+    T(el.earR, `translate(${(earX + hrx).toFixed(2)} ${(earY + hry).toFixed(2)}) ${rot(clamp(earR.x, -28, 28) + wiggle(t, 4) * 1.6 + 4 + perk * 12, 1322, 540)}`);
+    // 팔: 숨쉬기에 맞춰 살랑 + 말할 때 살짝 파닥 + 움직임 따라 흔들림
+    const armIdle = Math.sin(t * 2.1 + 0.6) * 2.5, armTalk = talk * 6;
+    T(el.armL, `translate(${alx.toFixed(2)} ${aly.toFixed(2)}) ${rot(clamp(armL.x, -20, 20) + armIdle + armTalk, 585, 935)}`);
+    T(el.armR, `translate(${arx.toFixed(2)} ${ary.toFixed(2)}) ${rot(clamp(armR.x, -20, 20) - armIdle - armTalk, 1479, 935)}`);
+
+    // 눈
+    const shut = Math.max(idle.doze > 0.5 ? 1 : 0, idle.yawn > 0.35 ? 1 : 0);
+    eye(el.eLo, el.eLc, 919, Math.max(cur.blinkL, shut));
+    eye(el.eRo, el.eRc, 1171, Math.max(cur.blinkR, shut));
+
+    // 열받음 표시: 오른쪽 이마에 팝 하고 나타나서 두근두근
+    angerPop.target = angry > 0.4 ? 1 : 0;
+    step(angerPop, (angerPop.target - angerPop.x) * 260 + angerPop.k * angerPop.x, dt);
+    const ap = clamp(angerPop.x, 0, 1.3);
+    const throb = 1 + 0.12 * Math.max(0, Math.sin(t * 10));
+    const [ax, ay] = at(1240, 470);
+    el.anger.setAttribute("opacity", Math.min(1, ap * 1.5).toFixed(2));
+    T(el.anger, `translate(${(1240 + ax + Y * 70).toFixed(1)} ${(470 + ay + Pt * 26).toFixed(1)}) scale(${(ap * 0.95).toFixed(3)}) rotate(-12)`);
+    T(el.angerPulse, `scale(${throb.toFixed(3)})`);
+
+    // 꽃: 웃는 동안 머리 둘레에서 피어올라 빙글빙글 날아감
+    const blooming = smileLock || cur.smile > 0.5;
+    if (blooming) { flowerAcc += dt * 7; }
+    if (burst > 0) { flowerAcc += burst; burst = 0; }
+    while (flowerAcc >= 1) { flowerAcc -= 1; if (flowers.length < 30) spawnFlower(lean, bob); }
+    updateFlowers(dt);
+    if (humOn) noteAcc += dt * 2.6; else noteAcc = Math.min(noteAcc, 0.7);
+    while (noteAcc >= 1) { noteAcc -= 1; if (notes.length < 16) spawnNote(Y * 10, bob); }
+    updateNotes(dt);
+  }
+  function eye(o, c, x, b) {
+    const closed = b > 0.6;
+    o.setAttribute("opacity", closed ? 0 : 1);
+    c.setAttribute("opacity", closed ? 1 : 0);
+    T(o, `translate(${x} 555) scale(1 ${Math.max(0.15, 1 - b).toFixed(3)}) translate(${-x} -555)`);
+  }
+
+  // ---- 루프 ----
+  let last = performance.now(), t0 = last;
+  function loop(now) {
+    const dt = clamp((now - last) / 1000, 1 / 240, 1 / 20);
+    last = now;
+    const t = (now - t0) / 1000;
+    if (mode === "demo") demo(t, dt);
+    else if (mode === "manual") manual();
+    else track();
+    draw(t, dt);
+    showValues();
+    for (const key of Object.keys(outs)) {
+      const v = key === "blink" ? +sliders.blink.value : +sliders[key].value;
+      outs[key].textContent = v.toFixed(2);
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ---- UI ----
+  function setStatus(text, cls) {
+    $("statusText").textContent = text;
+    $("status").className = cls || "";
+  }
+  function setMode(m, keepStatus) {
+    if (m === mode && m !== "cam") return;
+    if (mode === "cam" && m !== "cam") stopCamera();
+    mode = m;
+    $("modeDemo").setAttribute("aria-pressed", m === "demo");
+    $("modeManual").setAttribute("aria-pressed", m === "manual");
+    $("modeCam").setAttribute("aria-pressed", m === "cam");
+    if (m === "demo") { target.blinkL = target.blinkR = 0; if (!keepStatus) setStatus("데모 모드", ""); }
+    if (m === "manual") setStatus("수동 모드", "");
+    $("sliders").hidden = m !== "manual";
+    if (m === "cam") startCamera();
+  }
+  $("modeDemo").onclick = () => setMode("demo");
+  $("modeManual").onclick = () => setMode("manual");
+  $("modeCam").onclick = () => setMode("cam");
+  $("camSel").onchange = () => { try { localStorage.setItem("bearCam", $("camSel").value); } catch {} if (mode === "cam") restartCamera("카메라 바꾸는 중"); };
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && mode === "cam") lastAdvance = performance.now(); });
+  $("micBtn").onclick = toggleMic;
+  $("smileBtn").onclick = () => { smileLock = !smileLock; $("smileBtn").setAttribute("aria-pressed", smileLock); };
+  $("angryBtn").onclick = () => { angryLock = !angryLock; $("angryBtn").setAttribute("aria-pressed", angryLock); };
+  $("mirrorBtn").onclick = () => {
+    mirror = !mirror; $("mirrorBtn").setAttribute("aria-pressed", mirror);
+    video.classList.toggle("nomirror", !mirror);
+  };
+  document.querySelectorAll("[data-bg]").forEach((b) => b.addEventListener("click", () => {
+    document.body.classList.remove("bg-cream", "bg-green", "bg-night");
+    document.body.classList.add("bg-" + b.dataset.bg);
+    document.querySelectorAll("[data-bg]").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  }));
+  document.body.classList.add("bg-cream");
+  function setUI(show) {
+    $("panel").hidden = !show; $("status").hidden = !show; $("showui").hidden = show;
+    document.body.classList.toggle("clean", !show);
+  }
+  let peekTimer = 0;
+  addEventListener("mousemove", () => {
+    if (!document.body.classList.contains("clean")) return;
+    document.body.classList.add("peek"); clearTimeout(peekTimer);
+    peekTimer = setTimeout(() => document.body.classList.remove("peek"), 1500);
+  });
+  $("fsBtn").onclick = async () => {
+    try {
+      if (!document.fullscreenElement) { await document.documentElement.requestFullscreen(); setUI(false); }
+      else await document.exitFullscreen();
+    } catch { setStatus("이 화면에서는 전체화면을 쓸 수 없어요. 키보드 F11을 눌러 주세요.", "warn"); }
+  };
+  $("hideBtn").onclick = () => setUI(false);
+  $("showui").onclick = () => setUI(true);
+  let pokeUntil = 0;
+  $("bear").addEventListener("click", () => { burst = 8; boing(1.2); pokeUntil = performance.now() + 1500; });
+  $("noteBtn").onclick = () => { noteLock = !noteLock; $("noteBtn").setAttribute("aria-pressed", noteLock); };
+  function setIdle(on) { idleOn = on; $("idleBtn").setAttribute("aria-pressed", on); try { localStorage.setItem("bearIdle", on ? "1" : "0"); } catch {} }
+  function setOutline(on) { $("bearAll").setAttribute("filter", on ? "url(#outline)" : "none"); $("outlineBtn").setAttribute("aria-pressed", on); try { localStorage.setItem("bearOutline", on ? "1" : "0"); } catch {} }
+  $("idleBtn").onclick = () => setIdle(!idleOn);
+  $("outlineBtn").onclick = () => setOutline($("outlineBtn").getAttribute("aria-pressed") !== "true");
+  try { if (localStorage.getItem("bearIdle") === "0") setIdle(false); if (localStorage.getItem("bearOutline") === "0") setOutline(false); } catch {}
+  addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT") return;
+    const k = e.key.toLowerCase();
+    if (k === "h") setUI($("panel").hidden);
+    if (k === "f") $("fsBtn").click();
+    if (k === "s") $("smileBtn").click();
+    if (k === "a") $("angryBtn").click();
+    if (k === "d") $("noteBtn").click();
+    if (k === "1") setMode("demo");
+    if (k === "2") setMode("manual");
+    if (k === "3") setMode("cam");
+  });
+})();
+</script>
+</body></html>
